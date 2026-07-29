@@ -73,6 +73,12 @@ def build_parser() -> argparse.ArgumentParser:
     sub.add_parser("ui", help="Launch the graphical interface (PySide6)")
 
     sub.add_parser("coach", help="Show skills, goals and last coaching tips")
+    prog = sub.add_parser("progress", help="Show practice progress summary")
+    prog.add_argument("--days", type=int, default=30)
+    exp = sub.add_parser("export", help="Export session stats")
+    exp.add_argument("path", type=Path, help="Output file (.json or .csv)")
+    exp.add_argument("--days", type=int, default=365)
+
     sub.add_parser("devices", help="List audio input devices")
     diag = sub.add_parser("diagnose-audio", help="Run offline pitch detection on a synthetic tone")
     diag.add_argument("--freq", type=float, default=440.0, help="Test tone frequency Hz")
@@ -247,6 +253,43 @@ def _cmd_practice(args: argparse.Namespace) -> int:
 
 
 
+
+def _cmd_progress(args: argparse.Namespace) -> int:
+    import time
+    from fretflow.profile.progress import ProgressService
+
+    summary = ProgressService().summary(days=args.days)
+    print(f"── Progression ({args.days} jours) ──")
+    print(f"  Seances       : {summary.total_sessions}")
+    print(f"  Minutes       : {summary.total_minutes:.1f}")
+    print(f"  Precision moy : {summary.average_accuracy:.0%}")
+    print(f"  Meilleur score: {summary.best_score}")
+    if summary.last_session_at:
+        print(f"  Derniere      : {time.strftime('%Y-%m-%d %H:%M', time.localtime(summary.last_session_at))}")
+    if summary.days:
+        print()
+        print(f"  {'Jour':<12} {'Seances':>7} {'Min':>6} {'Prec.':>7}")
+        for d in summary.days[-14:]:
+            print(
+                f"  {d.day.isoformat():<12} {d.session_count:>7} "
+                f"{d.total_minutes:>6.1f} {d.average_accuracy:>6.0%}"
+            )
+    return 0
+
+
+def _cmd_export(args: argparse.Namespace) -> int:
+    from fretflow.profile.export import export_sessions_csv, export_sessions_json
+
+    path = args.path
+    if path.suffix.lower() == ".csv":
+        out = export_sessions_csv(path, days=args.days)
+    else:
+        if path.suffix.lower() != ".json":
+            path = path.with_suffix(".json")
+        out = export_sessions_json(path, days=args.days)
+    print(f"Exporte vers {out}")
+    return 0
+
 def _cmd_coach(_args: argparse.Namespace) -> int:
     from fretflow.coach import CoachService, SkillProfile
     from fretflow.profile import SkillStore
@@ -343,6 +386,8 @@ def main(argv: list[str] | None = None) -> int:
         "history": _cmd_history,
         "ui": _cmd_ui,
         "coach": _cmd_coach,
+        "progress": _cmd_progress,
+        "export": _cmd_export,
         "devices": _cmd_devices,
         "diagnose-audio": _cmd_diagnose_audio,
     }

@@ -8,6 +8,7 @@ from pathlib import Path
 
 from fretflow.core.errors import PersistenceError
 from fretflow.core.paths import library_db_path
+from fretflow.library.migrations import CURRENT_VERSION, apply_migrations
 from fretflow.library.schema import SCHEMA_SQL, SCHEMA_VERSION
 
 logger = logging.getLogger("fretflow.library.db")
@@ -28,20 +29,12 @@ def connect(db_path: Path | None = None) -> sqlite3.Connection:
 
 
 def _ensure_schema(conn: sqlite3.Connection) -> None:
+    version = apply_migrations(conn)
+    # Keep legacy SCHEMA_SQL as safety net for songs table if migration 1 was skipped
     cur = conn.execute(
-        "SELECT name FROM sqlite_master WHERE type='table' AND name='schema_version'"
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='songs'"
     )
     if cur.fetchone() is None:
         conn.executescript(SCHEMA_SQL)
-        conn.execute("INSERT INTO schema_version (version) VALUES (?)", (SCHEMA_VERSION,))
         conn.commit()
-        logger.info("Initialised library schema v%d", SCHEMA_VERSION)
-        return
-
-    row = conn.execute("SELECT version FROM schema_version LIMIT 1").fetchone()
-    current = int(row["version"]) if row else 0
-    if current < SCHEMA_VERSION:
-        # Future migrations go here
-        conn.execute("UPDATE schema_version SET version = ?", (SCHEMA_VERSION,))
-        conn.commit()
-        logger.info("Migrated library schema %d → %d", current, SCHEMA_VERSION)
+    logger.debug("Library schema version: %d (target %d)", version, CURRENT_VERSION)

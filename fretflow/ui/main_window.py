@@ -22,6 +22,7 @@ from PySide6.QtWidgets import (
 from fretflow.importers import import_song
 from fretflow.library import LibraryScanner, SongRepository
 from fretflow.practice.settings import PracticeSettings
+from fretflow.ui.dashboard_window import DashboardWindow
 from fretflow.ui.game_window import GameWindow
 
 logger = logging.getLogger("fretflow.ui.main_window")
@@ -35,6 +36,7 @@ class MainWindow(QMainWindow):
 
         self._repo = SongRepository()
         self._game: GameWindow | None = None
+        self._dashboard: DashboardWindow | None = None
 
         central = QWidget()
         self.setCentralWidget(central)
@@ -62,6 +64,10 @@ class MainWindow(QMainWindow):
         btn_play = QPushButton("Jouer")
         btn_play.clicked.connect(self._play_selected)
         buttons.addWidget(btn_play)
+
+        btn_progress = QPushButton("Progression")
+        btn_progress.clicked.connect(self._open_dashboard)
+        buttons.addWidget(btn_progress)
 
         layout.addLayout(buttons)
         self._refresh()
@@ -132,6 +138,10 @@ class MainWindow(QMainWindow):
             duration_seconds=4.5,
         )
         self._open_game(song)
+
+    def _open_dashboard(self) -> None:
+        self._dashboard = DashboardWindow()
+        self._dashboard.show()
 
     def _open_game(self, song) -> None:
         settings = PracticeSettings(song_id=song.id, tempo_factor=1.0)
