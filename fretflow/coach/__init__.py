@@ -1,8 +1,20 @@
-"""Session analysis, recommendations and skill tracking."""
+"""Session analysis, recommendations, ear training and skill tracking."""
 
+from fretflow.coach.ear_training import (
+    EarChallenge,
+    EarExerciseKind,
+    EarResult,
+    EarTrainingSession,
+)
 from fretflow.coach.goals import Goal, GoalKind, GoalPeriod, GoalTracker
+from fretflow.coach.phrase_generator import (
+    CallResponseResult,
+    CallResponseSession,
+    Phrase,
+    PhraseGenerator,
+)
 from fretflow.coach.recommendation_engine import Recommendation, RecommendationEngine
-from fretflow.coach.skill_graph import SkillGraph, TECHNIQUE_SKILLS
+from fretflow.coach.skill_graph import TECHNIQUE_SKILLS, SkillGraph
 from fretflow.coach.skills import SKILL_LABELS_FR, SkillId, SkillLevel, SkillProfile
 from fretflow.coach.technique_detector import (
     DifficultyLevel,
@@ -13,13 +25,21 @@ from fretflow.coach.technique_detector import (
 from fretflow.coach.weakness_detector import Weakness, WeaknessKind, detect_weaknesses
 
 __all__ = [
+    "CallResponseResult",
+    "CallResponseSession",
     "CoachResult",
     "CoachService",
     "DifficultyLevel",
+    "EarChallenge",
+    "EarExerciseKind",
+    "EarResult",
+    "EarTrainingSession",
     "Goal",
     "GoalKind",
     "GoalPeriod",
     "GoalTracker",
+    "Phrase",
+    "PhraseGenerator",
     "Recommendation",
     "RecommendationEngine",
     "SKILL_LABELS_FR",

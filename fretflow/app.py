@@ -73,7 +73,10 @@ def build_parser() -> argparse.ArgumentParser:
     sub.add_parser("ui", help="Launch the graphical interface (PySide6)")
 
     sub.add_parser("coach", help="Show skills, goals and last coaching tips")
-    prog = ana = sub.add_parser("analyse-song", help="Pedagogical analysis of a song file")
+    prog = ear = sub.add_parser("ear-train", help="Ear training (single notes)")
+    ear.add_argument("--count", type=int, default=5)
+    ear.add_argument("--play", action="store_true", help="Play reference tones if audio available")
+    ana = sub.add_parser("analyse-song", help="Pedagogical analysis of a song file")
     ana.add_argument("path", type=Path)
     sub.add_parser("progress", help="Show practice progress summary")
     prog.add_argument("--days", type=int, default=30)
@@ -257,6 +260,37 @@ def _cmd_practice(args: argparse.Namespace) -> int:
 
 
 
+
+def _cmd_ear_train(args: argparse.Namespace) -> int:
+    from fretflow.audio.reference_audio import ReferenceAudioEngine
+    from fretflow.audio.sample_player import NullSink, default_sink
+    from fretflow.coach.ear_training import EarExerciseKind, EarTrainingSession
+    from fretflow.practice.fretboard import midi_to_preferred_position
+
+    sink = default_sink() if args.play else NullSink()
+    engine = ReferenceAudioEngine(sink=sink)
+    session = EarTrainingSession(engine=engine)
+    print("── Ear training ──")
+    print("Le logiciel « pense » une note. Indice de position donné.")
+    print("Dans cette démo CLI, la réponse correcte est révélée après écoute.\n")
+    correct = 0
+    for i in range(args.count):
+        ch = session.next_challenge(EarExerciseKind.SINGLE_NOTE)
+        session.play_prompt()
+        midi = ch.primary_midi
+        string, fret = midi_to_preferred_position(midi)
+        print(f"  [{i+1}/{args.count}] {ch.prompt}")
+        print(f"           → cible: MIDI {midi}  corde {string} case {fret}")
+        # Auto-submit correct for demo when no interactive input
+        result = session.submit(midi)
+        if result.correct:
+            correct += 1
+            print("           OK")
+        else:
+            print("           Raté")
+    print(f"\nScore: {correct}/{args.count} ({session.accuracy:.0%})")
+    return 0
+
 def _cmd_analyse_song(args: argparse.Namespace) -> int:
     from fretflow.coach.technique_detector import TechniqueDetector
     from fretflow.importers import import_song
@@ -417,6 +451,7 @@ def main(argv: list[str] | None = None) -> int:
         "history": _cmd_history,
         "ui": _cmd_ui,
         "coach": _cmd_coach,
+        "ear-train": _cmd_ear_train,
         "analyse-song": _cmd_analyse_song,
         "progress": _cmd_progress,
         "export": _cmd_export,

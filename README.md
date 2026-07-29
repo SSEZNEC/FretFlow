@@ -1,29 +1,28 @@
-# FretFlow — Coach de guitare
+# FretFlow — Professeur de guitare
 
-> Pas seulement *quand* jouer — **comment** jouer.
+> Écoute. Pose les doigts. Joue. Progresse.
 
-## Philosophie
+## Milestone Professeur (Reference Audio + Ear Training)
 
-Chaque fonctionnalité doit aider le guitariste à progresser.
-FretFlow indique la **position des doigts**, le **doigté**, les **accords**,
-et propose des exercices ciblés.
+Le logiciel enseigne **quand**, **où**, **comment** et **quel son** obtenir.
 
-## Milestone Coach (post-M6)
+### Nouveautés
 
-- Manche synchronisé (`FretboardWidget`)
-- Moteur de doigté (`FingeringEngine`)
-- Analyse d'accords + diagrammes
-- Analyse pédagogique à l'import
-- Mode Learn (tempo réduit, anticipation)
-- Coach : passages difficiles → boucle + doigté
+- **ReferenceAudioEngine** — prévisualisation sonore (sons de guitare synthétisés)
+- Modes : OFF / NOTE / ACCORD / TEMPO / LEARN / SILENCIEUX (sur erreur)
+- **Ear training** — `fretflow ear-train`
+- **Call & response** — phrases à reproduire
+- Banque de timbres : clean, acoustic, crunch, jazz, classical
+- Bibliothèque d'accords ouverts + diagrammes
+- Manche + doigté (M7) toujours présents
 
-## Installation
+### Installation
 
 Voir [INSTALL.md](INSTALL.md).
 
 ```bash
 pip install -e ".[dev,import,ui,audio]"
 fretflow ui
-fretflow practise --auto
-fretflow analyse-song morceau.gp5
+fretflow ear-train --count 5
+fretflow practice --auto
 ```

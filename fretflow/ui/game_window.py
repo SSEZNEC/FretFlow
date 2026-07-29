@@ -22,6 +22,8 @@ from fretflow.engine import PlayedNoteEvent, SessionRunner
 from fretflow.input.keyboard import key_to_midi
 from fretflow.practice.settings import PracticeSettings
 from fretflow.profile import SessionRepository
+from fretflow.audio.reference_audio import ReferenceAudioEngine, ReferenceMode
+from fretflow.audio.sample_player import NullSink
 from fretflow.practice.chord_analyser import ChordAnalyser
 from fretflow.practice.fingering import FingeringEngine
 from fretflow.ui.highway_widget import HighwayWidget
@@ -59,6 +61,11 @@ class GameWindow(QMainWindow):
         raw_notes = track.notes if track else []
         self._all_notes = self._fingering.assign_sequence(raw_notes)
         self._chords = self._chord_analyser.analyse(self._all_notes)
+        self._ref_audio = ReferenceAudioEngine(
+            mode=ReferenceMode.LEARN if self._settings.learn_mode else ReferenceMode.NOTE,
+            sink=NullSink(),  # UI can swap to default_sink() when audio desired
+        )
+        self._ref_note_idx = 0
 
         central = QWidget()
         self.setCentralWidget(central)
@@ -122,8 +129,10 @@ class GameWindow(QMainWindow):
             self._settings.tempo_factor = min(self._settings.tempo_factor, 0.6)
             self._tempo_slider.setValue(int(self._settings.tempo_factor * 100))
             self._runner.clock.set_tempo_factor(self._settings.tempo_factor)
+            self._ref_audio.set_mode(ReferenceMode.LEARN)
             self._status.setText("Mode Learn — tempo réduit, anticipez les positions")
         else:
+            self._ref_audio.set_mode(ReferenceMode.NOTE)
             self._status.setText("")
     def _toggle_play(self) -> None:
         if self._runner.clock.is_running:
@@ -177,6 +186,10 @@ class GameWindow(QMainWindow):
 
     def _update_fretboard(self) -> None:
         t = self._runner.clock.song_time_seconds
+        # Reference audio: play notes as they approach
+        for note in self._all_notes:
+            if 0 <= note.start_seconds - t <= 0.05:
+                self._ref_audio.on_note_approaching(note)
         positions = self._fingering.positions_at(self._all_notes, t)
         chord_name = None
         for ch in self._chords:
