@@ -22,7 +22,11 @@ from fretflow.engine import PlayedNoteEvent, SessionRunner
 from fretflow.input.keyboard import key_to_midi
 from fretflow.practice.settings import PracticeSettings
 from fretflow.profile import SessionRepository
+from fretflow.practice.chord_analyser import ChordAnalyser
+from fretflow.practice.fingering import FingeringEngine
 from fretflow.ui.highway_widget import HighwayWidget
+from fretflow.ui.widgets.chord_diagram import ChordDiagramWidget
+from fretflow.ui.widgets.fretboard_widget import FretboardWidget
 
 logger = logging.getLogger("fretflow.ui.game_window")
 
@@ -49,14 +53,19 @@ class GameWindow(QMainWindow):
             windows=self._config.judgment,
         )
         self._finished = False
+        self._fingering = FingeringEngine()
+        self._chord_analyser = ChordAnalyser()
+        track = song.tracks[self._settings.track_index] if song.tracks else None
+        raw_notes = track.notes if track else []
+        self._all_notes = self._fingering.assign_sequence(raw_notes)
+        self._chords = self._chord_analyser.analyse(self._all_notes)
 
         central = QWidget()
         self.setCentralWidget(central)
         layout = QVBoxLayout(central)
 
         self._highway = HighwayWidget()
-        track = song.tracks[self._settings.track_index] if song.tracks else None
-        notes = track.notes if track else []
+        notes = list(self._all_notes)
         start = self._settings.section_start_seconds or 0.0
         end = self._settings.section_end_seconds
         if start or end is not None:
@@ -69,11 +78,23 @@ class GameWindow(QMainWindow):
         self._highway.key_pressed.connect(self._on_key)
         layout.addWidget(self._highway, stretch=1)
 
+        fret_row = QHBoxLayout()
+        self._fretboard = FretboardWidget(frets=15)
+        fret_row.addWidget(self._fretboard, stretch=1)
+        self._chord_diagram = ChordDiagramWidget()
+        fret_row.addWidget(self._chord_diagram)
+        layout.addLayout(fret_row)
+
         # Controls
         controls = QHBoxLayout()
         self._btn_play = QPushButton("▶ Lecture")
         self._btn_play.clicked.connect(self._toggle_play)
         controls.addWidget(self._btn_play)
+
+        self._btn_learn = QPushButton("Mode Learn")
+        self._btn_learn.setCheckable(True)
+        self._btn_learn.toggled.connect(self._toggle_learn)
+        controls.addWidget(self._btn_learn)
 
         controls.addWidget(QLabel("Tempo"))
         self._tempo_slider = QSlider(Qt.Orientation.Horizontal)
@@ -94,6 +115,16 @@ class GameWindow(QMainWindow):
 
         self._update_hud()
 
+
+    def _toggle_learn(self, enabled: bool) -> None:
+        """Learn mode: slow tempo and emphasize next positions."""
+        if enabled:
+            self._settings.tempo_factor = min(self._settings.tempo_factor, 0.6)
+            self._tempo_slider.setValue(int(self._settings.tempo_factor * 100))
+            self._runner.clock.set_tempo_factor(self._settings.tempo_factor)
+            self._status.setText("Mode Learn — tempo réduit, anticipez les positions")
+        else:
+            self._status.setText("")
     def _toggle_play(self) -> None:
         if self._runner.clock.is_running:
             self._runner.pause()
@@ -142,6 +173,31 @@ class GameWindow(QMainWindow):
         report = self._runner.build_report()
         acc = f"{report.accuracy:.0%}" if (report.notes_hit + report.notes_missed) else "—"
         self._highway.set_hud(report.score, self._runner._combo, acc)
+
+
+    def _update_fretboard(self) -> None:
+        t = self._runner.clock.song_time_seconds
+        positions = self._fingering.positions_at(self._all_notes, t)
+        chord_name = None
+        for ch in self._chords:
+            if abs(ch.start_seconds - t) < 0.12:
+                chord_name = ch.name
+                self._chord_diagram.set_chord(ch.name, list(ch.positions))
+                break
+        else:
+            if not positions:
+                self._chord_diagram.clear()
+
+        info = ""
+        current = [p for p in positions if p.marker.name == "CURRENT"]
+        if current:
+            p = current[0]
+            finger_txt = f"doigt {p.finger}" if p.finger else "corde a vide"
+            info = f"Corde {p.string}  case {p.fret}  {finger_txt}"
+            if p.midi_pitch is not None:
+                names = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"]
+                info = f"{names[p.midi_pitch % 12]}  ·  {info}"
+        self._fretboard.set_positions(positions, chord_name=chord_name, info=info)
 
     def _finish(self) -> None:
         if self._finished:

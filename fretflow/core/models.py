@@ -41,6 +41,7 @@ class Note:
     string: int | None = None  # 1 = high E … 6 = low E (guitar convention)
     fret: int | None = None
     technique: Technique = Technique.NONE
+    finger: int | None = None  # 1=index … 4=pinky, 0=open/thumb
     velocity: int = 80
 
     def __post_init__(self) -> None:

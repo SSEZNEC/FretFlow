@@ -17,6 +17,7 @@ class PracticeSettings:
     section_end_seconds: float | None = None
     loop_enabled: bool = False
     metronome_enabled: bool = False
+    learn_mode: bool = False
     metronome_bpm: float | None = None  # None = use song tempo * factor
 
     def __post_init__(self) -> None:

@@ -114,7 +114,7 @@ class RecommendationEngine:
                     tempo_factor=self.default_tempo_factor,
                     target_repetitions=5,
                     instructions=(
-                        "Bouclez jusqu a 85 % de precision, "
+                        "Bouclez jusqu a 85 % de precision. Observez le doigte sur le manche, "
                         "puis remontez le tempo par paliers de 5 %."
                     ),
                 ),

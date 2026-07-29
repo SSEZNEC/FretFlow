@@ -73,7 +73,9 @@ def build_parser() -> argparse.ArgumentParser:
     sub.add_parser("ui", help="Launch the graphical interface (PySide6)")
 
     sub.add_parser("coach", help="Show skills, goals and last coaching tips")
-    prog = sub.add_parser("progress", help="Show practice progress summary")
+    prog = ana = sub.add_parser("analyse-song", help="Pedagogical analysis of a song file")
+    ana.add_argument("path", type=Path)
+    sub.add_parser("progress", help="Show practice progress summary")
     prog.add_argument("--days", type=int, default=30)
     exp = sub.add_parser("export", help="Export session stats")
     exp.add_argument("path", type=Path, help="Output file (.json or .csv)")
@@ -254,6 +256,35 @@ def _cmd_practice(args: argparse.Namespace) -> int:
 
 
 
+
+def _cmd_analyse_song(args: argparse.Namespace) -> int:
+    from fretflow.coach.technique_detector import TechniqueDetector
+    from fretflow.importers import import_song
+    from fretflow.practice.fingering import FingeringEngine
+
+    song = import_song(args.path)
+    track = song.tracks[0] if song.tracks else None
+    if track:
+        assigned = FingeringEngine().assign_sequence(track.notes)
+        # replace notes in first measure set for analysis
+        if track.measures:
+            track.measures[0].notes = assigned
+    pedagogy = TechniqueDetector().analyse(song)
+    print(f"── Analyse pedagogique : {song.title} ──")
+    print(f"  Niveau estime  : {pedagogy.level.value}")
+    print(f"  Duree indicative: {pedagogy.estimated_minutes:.0f} min")
+    if pedagogy.techniques_summary:
+        print("  Contenu :")
+        for line in pedagogy.techniques_summary:
+            print(f"    • {line}")
+    if pedagogy.chord_names:
+        print(f"  Accords : {', '.join(pedagogy.chord_names[:12])}")
+    if pedagogy.tips:
+        print("  Conseils :")
+        for tip in pedagogy.tips:
+            print(f"    → {tip}")
+    return 0
+
 def _cmd_progress(args: argparse.Namespace) -> int:
     import time
     from fretflow.profile.progress import ProgressService
@@ -386,6 +417,7 @@ def main(argv: list[str] | None = None) -> int:
         "history": _cmd_history,
         "ui": _cmd_ui,
         "coach": _cmd_coach,
+        "analyse-song": _cmd_analyse_song,
         "progress": _cmd_progress,
         "export": _cmd_export,
         "devices": _cmd_devices,

@@ -73,8 +73,13 @@ class CoachService:
             f"  Precision : {result.report.accuracy:.0%}",
             f"  Offset moy: {result.report.average_offset_ms:+.1f} ms",
             f"  Score     : {result.report.score}",
+            f"  Temps utile: {result.report.duration_seconds:.0f} s",
             "",
         ]
+        if result.report.technique_tags_seen:
+            lines.append("Techniques : " + ", ".join(result.report.technique_tags_seen))
+            lines.append("")
+
         if result.weaknesses:
             lines.append("Points faibles :")
             for w in result.weaknesses[:5]:

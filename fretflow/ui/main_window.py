@@ -65,7 +65,7 @@ class MainWindow(QMainWindow):
         btn_play.clicked.connect(self._play_selected)
         buttons.addWidget(btn_play)
 
-        btn_progress = QPushButton("Progression")
+        btn_progress = QPushButton("Tableau de bord")
         btn_progress.clicked.connect(self._open_dashboard)
         buttons.addWidget(btn_progress)
 
