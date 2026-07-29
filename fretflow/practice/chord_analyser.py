@@ -45,7 +45,7 @@ class ChordVoicing:
 class ChordAnalyser:
     """Group near-simultaneous notes into chord voicings."""
 
-    window_seconds: float = 0.05  # notes within this gap form a chord
+    window_seconds: float = 0.08  # notes within this gap form a chord
 
     def analyse(self, notes: list[Note]) -> list[ChordVoicing]:
         if not notes:

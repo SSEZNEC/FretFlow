@@ -7,6 +7,7 @@ from PySide6.QtGui import QColor, QFont, QPainter, QPen
 from PySide6.QtWidgets import QWidget
 
 from fretflow.practice.fretboard import FretMarker, FretPosition
+from fretflow.ui.widgets.ghost_hand import GhostHandMode, GhostHandState
 
 # Colours per marker role
 _MARKER_COLORS = {
@@ -37,6 +38,7 @@ class FretboardWidget(QWidget):
         self._positions: list[FretPosition] = []
         self._chord_name: str | None = None
         self._info_line: str = ""
+        self._ghost = GhostHandState()
         self.setMinimumHeight(160)
         self.setMinimumWidth(400)
 
@@ -55,6 +57,19 @@ class FretboardWidget(QWidget):
         self._positions = []
         self._chord_name = None
         self._info_line = ""
+        self._ghost = GhostHandState()
+        self.update()
+
+    def set_ghost_hand(self, state: GhostHandState) -> None:
+        self._ghost = state
+        if state.mode is not GhostHandMode.HIDDEN and state.current:
+            # Merge ghost into display positions when empty
+            if not self._positions:
+                self._positions = state.visible_positions()
+        self.update()
+
+    def set_ghost_mode(self, mode: GhostHandMode) -> None:
+        self._ghost.mode = mode
         self.update()
 
     # ------------------------------------------------------------------ paint
@@ -155,7 +170,7 @@ class FretboardWidget(QWidget):
 
         # Chord name / info
         painter.setPen(_TEXT)
-        painter.setFont(QFont("Sans", 11, QFont.Weight.Bold))
+        painter.setFont(QFont("Sans", 14, QFont.Weight.Bold))
         header = self._chord_name or ""
         if self._info_line:
             header = f"{header}  {self._info_line}".strip()

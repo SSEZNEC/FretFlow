@@ -23,13 +23,14 @@ from fretflow.input.keyboard import key_to_midi
 from fretflow.practice.settings import PracticeSettings
 from fretflow.profile import SessionRepository
 from fretflow.audio.reference_audio import ReferenceAudioEngine, ReferenceMode
-from fretflow.audio.sample_player import NullSink
+from fretflow.audio.sample_player import default_sink
 from fretflow.practice.chord_analyser import ChordAnalyser
 from fretflow.practice.fingering import FingeringEngine
 from fretflow.ui.highway_widget import HighwayWidget
 from fretflow.coach.teacher_tips import TeacherTipEngine
 from fretflow.ui.widgets.chord_diagram import ChordDiagramWidget
 from fretflow.ui.widgets.fretboard_widget import FretboardWidget
+from fretflow.ui.widgets.ghost_hand import GhostHandMode, GhostHandState
 from fretflow.ui.widgets.teacher_panel import TeacherPanel
 
 logger = logging.getLogger("fretflow.ui.game_window")
@@ -64,9 +65,13 @@ class GameWindow(QMainWindow):
         self._all_notes = self._fingering.assign_sequence(raw_notes)
         self._chords = self._chord_analyser.analyse(self._all_notes)
         self._ref_audio = ReferenceAudioEngine(
-            mode=ReferenceMode.LEARN if self._settings.learn_mode else ReferenceMode.NOTE,
-            sink=NullSink(),  # UI can swap to default_sink() when audio desired
+            mode=ReferenceMode.NOTE,
+            sink=default_sink(),
         )
+        try:
+            self._ref_audio.preload()
+        except Exception:
+            pass
         self._ref_note_idx = 0
         self._tip_engine = TeacherTipEngine()
         self._last_hit: bool | None = None
@@ -116,6 +121,12 @@ class GameWindow(QMainWindow):
         self._btn_learn.toggled.connect(self._toggle_learn)
         controls.addWidget(self._btn_learn)
 
+        self._btn_sound = QPushButton("Son ON")
+        self._btn_sound.setCheckable(True)
+        self._btn_sound.setChecked(True)
+        self._btn_sound.toggled.connect(self._toggle_sound)
+        controls.addWidget(self._btn_sound)
+
         controls.addWidget(QLabel("Tempo"))
         self._tempo_slider = QSlider(Qt.Orientation.Horizontal)
         self._tempo_slider.setRange(50, 100)
@@ -129,12 +140,21 @@ class GameWindow(QMainWindow):
         controls.addWidget(self._status, stretch=1)
         layout.addLayout(controls)
 
+        self._update_fretboard()  # show first positions before play
         self._timer = QTimer(self)
         self._timer.setInterval(16)  # ~60 FPS
         self._timer.timeout.connect(self._on_frame)
 
         self._update_hud()
 
+
+    def _toggle_sound(self, enabled: bool) -> None:
+        if enabled:
+            self._ref_audio.set_mode(ReferenceMode.NOTE)
+            self._btn_sound.setText("Son ON")
+        else:
+            self._ref_audio.set_mode(ReferenceMode.OFF)
+            self._btn_sound.setText("Son OFF")
 
     def _toggle_learn(self, enabled: bool) -> None:
         """Learn mode: slow tempo and emphasize next positions."""
@@ -203,21 +223,38 @@ class GameWindow(QMainWindow):
 
 
     def _update_fretboard(self) -> None:
-        t = self._runner.clock.song_time_seconds
-        # Reference audio: play notes as they approach
+        t = self._runner.clock.current_time()
+
+        # Reference audio: play notes slightly before they arrive
         for note in self._all_notes:
-            if 0 <= note.start_seconds - t <= 0.05:
+            lead = 0.08
+            if 0 <= note.start_seconds - t <= lead:
                 self._ref_audio.on_note_approaching(note)
-        positions = self._fingering.positions_at(self._all_notes, t)
-        chord_name = None
-        for ch in self._chords:
-            if abs(ch.start_seconds - t) < 0.12:
-                chord_name = ch.name
-                self._chord_diagram.set_chord(ch.name, list(ch.positions))
-                break
-        else:
-            if not positions:
-                self._chord_diagram.clear()
+
+        # Positions: use already-fingered notes (no re-assign each frame)
+        positions = self._fingering.positions_at(
+            self._all_notes,
+            t,
+            lookahead_seconds=2.0,
+            window=0.12,
+        )
+
+        # Chord name: current or next upcoming
+        chord_name = self._chord_label_at(t)
+        if chord_name:
+            # Find matching voicing for diagram
+            for ch in self._chords:
+                if abs(ch.start_seconds - t) < 0.5 or (
+                    0 <= ch.start_seconds - t <= 2.0
+                ):
+                    if ch.name == chord_name or chord_name.startswith(ch.name):
+                        self._chord_diagram.set_chord(ch.name, list(ch.positions))
+                        break
+            else:
+                # Still show name even without exact voicing match
+                pass
+        elif not positions:
+            self._chord_diagram.clear()
 
         info = ""
         current = [p for p in positions if p.marker.name == "CURRENT"]
@@ -226,9 +263,28 @@ class GameWindow(QMainWindow):
             finger_txt = f"doigt {p.finger}" if p.finger else "corde a vide"
             info = f"Corde {p.string}  case {p.fret}  {finger_txt}"
             if p.midi_pitch is not None:
-                names = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"]
-                info = f"{names[p.midi_pitch % 12]}  ·  {info}"
+                names = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
+                note_name = names[p.midi_pitch % 12]
+                info = f"{note_name}  ·  {info}"
+        elif positions:
+            # Show next note name when nothing is "current"
+            nxt = [p for p in positions if p.marker.name == "NEXT"]
+            if nxt and nxt[0].midi_pitch is not None:
+                names = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
+                info = f"Prochaine : {names[nxt[0].midi_pitch % 12]}"
+
         self._fretboard.set_positions(positions, chord_name=chord_name, info=info)
+        current = [p for p in positions if p.marker.name == "CURRENT"]
+        nxt = [p for p in positions if p.marker.name == "NEXT"]
+        ghost_on = getattr(self, "_btn_ghost", None)
+        ghost_checked = ghost_on.isChecked() if ghost_on is not None else True
+        self._fretboard.set_ghost_hand(
+            GhostHandState(
+                mode=GhostHandMode.FULL if ghost_checked else GhostHandMode.HIDDEN,
+                current=current,
+                next_positions=nxt,
+            )
+        )
         tips = self._tip_engine.tips_at(
             t, self._all_notes, positions,
             last_hit=self._last_hit,
@@ -237,6 +293,48 @@ class GameWindow(QMainWindow):
         )
         if tips:
             self._teacher.show_tips(tips)
+
+    def _chord_label_at(self, t: float) -> str | None:
+        """Return chord name at/near time t, or next upcoming chord."""
+        if not self._chords:
+            # Single-note label from nearest note
+            return self._note_name_near(t)
+        # Prefer chord starting within 0.25s past or 2s future
+        best = None
+        best_key = 999.0
+        for ch in self._chords:
+            delta = ch.start_seconds - t
+            if -0.25 <= delta <= 2.0:
+                # Prefer current/closest
+                key = abs(delta) if delta <= 0.15 else delta + 10
+                if key < best_key:
+                    best_key = key
+                    best = ch.name
+        if best:
+            return best
+        return self._note_name_near(t)
+
+    def _note_name_near(self, t: float) -> str | None:
+        names = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
+        upcoming = [
+            n for n in self._all_notes
+            if -0.1 <= n.start_seconds - t <= 2.0
+        ]
+        if not upcoming:
+            return None
+        # Group simultaneous notes into a chord-like label
+        first_t = upcoming[0].start_seconds
+        group = [n for n in upcoming if abs(n.start_seconds - first_t) < 0.06]
+        if len(group) == 1:
+            return names[group[0].midi_pitch % 12]
+        # Try analyser name
+        from fretflow.practice.chord_analyser import ChordAnalyser
+        voicings = ChordAnalyser().analyse(group)
+        if voicings:
+            return voicings[0].name
+        pcs = sorted({names[n.midi_pitch % 12] for n in group})
+        return "+".join(pcs)
+
 
     def _finish(self) -> None:
         if self._finished:
@@ -254,12 +352,17 @@ class GameWindow(QMainWindow):
         except Exception:
             logger.exception("Failed to save session")
 
-        lines = [
-            f"Score : {report.score}",
-            f"Précision : {report.accuracy:.0%}",
-            f"Hits / Miss : {report.notes_hit} / {report.notes_missed}",
-            f"Max combo : {report.max_combo}",
-            "",
-            *report.recommendations,
-        ]
-        QMessageBox.information(self, "Rapport de session", "\n".join(lines))
+        try:
+            from fretflow.coach import CoachService
+            text = CoachService().format_result(
+                CoachService().analyse_runner(self._runner)
+            )
+            if hasattr(self, "_teacher"):
+                self._teacher.show_message("Séance terminée — voir le rapport.")
+        except Exception:
+            text = (
+                f"Score : {report.score}\n"
+                f"Précision : {report.accuracy:.0%}\n"
+                f"Hits / Miss : {report.notes_hit} / {report.notes_missed}"
+            )
+        QMessageBox.information(self, "Rapport du professeur", text)

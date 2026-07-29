@@ -1,32 +1,38 @@
-# FretFlow — Votre professeur de guitare
+# FretFlow
 
-> Un professeur particulier installé sur votre ordinateur.
+**Professeur de guitare open source — Beta 0.9**
 
-## Version 1.0 — Virtual Guitar Teacher
+> Apprenez plus vite. Jouez plus juste. Revenez chaque jour.
 
-Interface en **3 zones synchronisées** :
+## Pour les guitaristes (sans Python)
 
-1. **Highway** — quand jouer  
-2. **Manche** — où et comment (doigtés)  
-3. **Teacher Panel** — conseils en temps réel  
+1. Téléchargez **FretFlow.exe** depuis les Releases GitHub
+2. Double-cliquez
+3. **Importer un morceau** (MIDI ou Guitar Pro)
+4. Cliquez **Pratiquer**
 
-### Capacités
-
-- Tips live : « Prépare ton barré », « Excellent timing », « Attention au slide »
-- Dialogue de fin de séance (encourageant, jamais punitif)
-- Plans d\'entraînement auto (échauffement → accords → morceau → technique → retour au calme)
-- Reference audio (NOTE / LEARN / DEMO / ASSIST / CORRECTION)
-- Feedback hauteur : ✔ / ▲ / ▼ / ≈
-- Ear training, call & response
-- Analyse pédagogique GP, progression, exports
-
-### Installation
+## Pour les développeurs
 
 ```bash
 pip install -e ".[dev,import,ui,audio]"
+pytest
 fretflow ui
-fretflow plan --minutes 45 --song "Mon morceau"
-fretflow practice --auto
 ```
 
-Voir [INSTALL.md](INSTALL.md).
+Build Windows :
+
+```powershell
+.\build.ps1
+```
+
+## Parcours utilisateur
+
+```
+Accueil → Bibliothèque → Morceau → Pratique (manche + tips)
+       → Rapport du professeur → Tableau de bord → Revenir demain
+```
+
+## Documentation
+
+- INSTALL.md — installation détaillée
+- CHANGELOG.md — nouveautés

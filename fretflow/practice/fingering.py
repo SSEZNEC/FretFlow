@@ -90,7 +90,11 @@ class FingeringEngine:
         window: float = 0.08,
     ) -> list[FretPosition]:
         """Fret positions for notes around *time_seconds*."""
-        assigned = self.assign_sequence(notes)
+        # Re-use notes if already fingered to avoid O(n) work every frame
+        if notes and notes[0].string is not None and notes[0].finger is not None:
+            assigned = notes
+        else:
+            assigned = self.assign_sequence(notes)
         positions: list[FretPosition] = []
 
         for note in assigned:
