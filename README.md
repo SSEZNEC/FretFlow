@@ -2,55 +2,33 @@
 
 **Coach d'apprentissage de la guitare open source.**
 
-> Joue les morceaux que tu aimes. Progresse sans t'en rendre compte.
-
 ## État actuel
 
-**Milestone 3 — Affichage de jeu et jugement** ✅
+**Milestone 4 — Audio et calibration** ✅
 
-- Highway PySide6 synchronisé au temps de jeu
-- Notes simples et longues, score / combo / précision
-- Contrôles clavier (A–K) + play/pause (Espace)
-- Tempo 50–100 %, bibliothèque graphique
-- Session runner + rapport (M2) branchés sur l'UI
+- Détecteur de hauteur monophonique (autocorrélation + rejet sous-harmoniques)
+- Buffer circulaire, pipeline audio → notes validées
+- Capture simulée (tests) + sounddevice (optionnel, si PortAudio)
+- Calibration de latence, validation/debounce
+- CLI `diagnose-audio` et `devices`
+
+Milestones 0–3 inclus (import, bibliothèque, session, UI highway).
 
 ## Installation
 
 ```bash
 python -m venv .venv && source .venv/bin/activate
-pip install -e ".[dev,import,ui]"
+pip install -e ".[dev,import,ui,audio]"
+# Linux : sudo apt install portaudio19-dev   # pour le micro réel
 pytest
 ```
 
-## Lancer l'interface
+## Commandes
 
 ```bash
 fretflow ui
-```
-
-Dans la fenêtre :
-1. **Démo C majeur** pour un essai immédiat
-2. **Importer** un `.mid` / `.gp5` ou **Scanner** un dossier
-3. **Jouer** — les notes défilent vers la ligne de hit
-4. Touches **A S D F G H J K** = notes ; **Espace** = pause
-
-## CLI (sans UI)
-
-```bash
-fretflow scan ~/Partitions
-fretflow library
 fretflow practice --auto
-fretflow history
-```
-
-## Architecture UI
-
-L'UI ne calcule ni score ni DSP : elle appelle `SessionRunner` et affiche l'état.
-
-```
-ui/
-├── main_window.py    # bibliothèque + lancement
-├── game_window.py    # session + contrôles
-├── highway_widget.py # rendu highway (paintEvent)
-└── colors.py         # thème sombre
+fretflow diagnose-audio --freq 440
+fretflow devices
+fretflow scan ~/Partitions
 ```

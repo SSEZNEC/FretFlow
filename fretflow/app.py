@@ -72,6 +72,10 @@ def build_parser() -> argparse.ArgumentParser:
 
     sub.add_parser("ui", help="Launch the graphical interface (PySide6)")
 
+    sub.add_parser("devices", help="List audio input devices")
+    diag = sub.add_parser("diagnose-audio", help="Run offline pitch detection on a synthetic tone")
+    diag.add_argument("--freq", type=float, default=440.0, help="Test tone frequency Hz")
+
     return parser
 
 
@@ -245,6 +249,44 @@ def _cmd_practice(args: argparse.Namespace) -> int:
 
 
 
+
+def _cmd_devices(_args: argparse.Namespace) -> int:
+    from fretflow.audio import SimulatedCapture, SoundDeviceCapture
+
+    print("Mode simulation : toujours disponible")
+    print("  [simulated] default")
+    try:
+        real = SoundDeviceCapture()
+        devices = real.list_devices()
+        print(f"\nPériphériques sounddevice ({len(devices)}) :")
+        for d in devices:
+            print(f"  {d}")
+    except Exception as exc:
+        print(f"\nsounddevice indisponible : {exc}")
+    return 0
+
+
+def _cmd_diagnose_audio(args: argparse.Namespace) -> int:
+    import numpy as np
+    from fretflow.audio import YinDetector, hz_to_midi, midi_to_hz
+
+    sr = 44100
+    freq = args.freq
+    t = np.arange(int(sr * 0.2)) / sr
+    samples = (0.5 * np.sin(2 * np.pi * freq * t)).astype(np.float32)
+    det = YinDetector(noise_rms=0.001)
+    est = det.detect(samples, sr, 0.0)
+    print(f"Tone cible     : {freq:.2f} Hz (MIDI {hz_to_midi(freq):.2f})")
+    if est is None:
+        print("Détection     : échec")
+        return 1
+    print(f"Détecté        : {est.frequency_hz:.2f} Hz (MIDI {est.midi_pitch:.2f})")
+    print(f"Confiance      : {est.confidence:.2f}")
+    print(f"Cents          : {est.cents_offset:+.1f}")
+    err = abs(est.frequency_hz - freq) / freq * 100
+    print(f"Erreur relative: {err:.2f} %")
+    return 0 if err < 5 else 1
+
 def _cmd_ui(_args: argparse.Namespace) -> int:
     try:
         from PySide6.QtWidgets import QApplication
@@ -283,6 +325,8 @@ def main(argv: list[str] | None = None) -> int:
         "practice": _cmd_practice,
         "history": _cmd_history,
         "ui": _cmd_ui,
+        "devices": _cmd_devices,
+        "diagnose-audio": _cmd_diagnose_audio,
     }
     if args.command in commands:
         return commands[args.command](args)
