@@ -27,8 +27,10 @@ from fretflow.audio.sample_player import NullSink
 from fretflow.practice.chord_analyser import ChordAnalyser
 from fretflow.practice.fingering import FingeringEngine
 from fretflow.ui.highway_widget import HighwayWidget
+from fretflow.coach.teacher_tips import TeacherTipEngine
 from fretflow.ui.widgets.chord_diagram import ChordDiagramWidget
 from fretflow.ui.widgets.fretboard_widget import FretboardWidget
+from fretflow.ui.widgets.teacher_panel import TeacherPanel
 
 logger = logging.getLogger("fretflow.ui.game_window")
 
@@ -45,7 +47,7 @@ class GameWindow(QMainWindow):
     ) -> None:
         super().__init__(parent)
         self.setWindowTitle(f"FretFlow — {song.title}")
-        self.resize(720, 640)
+        self.resize(1000, 720)
 
         self._config = config or load_config()
         self._settings = settings or PracticeSettings(song_id=song.id)
@@ -66,10 +68,21 @@ class GameWindow(QMainWindow):
             sink=NullSink(),  # UI can swap to default_sink() when audio desired
         )
         self._ref_note_idx = 0
+        self._tip_engine = TeacherTipEngine()
+        self._last_hit: bool | None = None
+        self._last_offset_ms: float | None = None
 
         central = QWidget()
         self.setCentralWidget(central)
-        layout = QVBoxLayout(central)
+        root = QHBoxLayout(central)
+
+        left = QVBoxLayout()
+        root.addLayout(left, stretch=3)
+
+        self._teacher = TeacherPanel()
+        root.addWidget(self._teacher, stretch=1)
+
+        layout = left  # existing code appends to layout
 
         self._highway = HighwayWidget()
         notes = list(self._all_notes)
@@ -166,12 +179,17 @@ class GameWindow(QMainWindow):
             PlayedNoteEvent(midi_pitch=midi, time_seconds=t)
         )
         if hit:
+            self._last_hit = True
+            self._last_offset_ms = hit.offset_ms
             self._highway.mark_hit(hit.midi_pitch, hit.expected_seconds, hit.judgment.name)
             self._update_hud()
+        else:
+            self._last_hit = False
 
     def _on_frame(self) -> None:
         t = self._runner.clock.current_time()
         self._highway.set_song_time(t)
+        self._update_fretboard()
         misses = self._runner.tick()
         if misses:
             self._update_hud()
@@ -211,6 +229,14 @@ class GameWindow(QMainWindow):
                 names = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"]
                 info = f"{names[p.midi_pitch % 12]}  ·  {info}"
         self._fretboard.set_positions(positions, chord_name=chord_name, info=info)
+        tips = self._tip_engine.tips_at(
+            t, self._all_notes, positions,
+            last_hit=self._last_hit,
+            last_offset_ms=self._last_offset_ms,
+            combo=getattr(self._runner, "_combo", 0),
+        )
+        if tips:
+            self._teacher.show_tips(tips)
 
     def _finish(self) -> None:
         if self._finished:

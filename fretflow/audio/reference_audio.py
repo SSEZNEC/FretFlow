@@ -17,11 +17,14 @@ logger = logging.getLogger("fretflow.audio.reference")
 
 class ReferenceMode(Enum):
     OFF = auto()
-    NOTE = auto()          # each expected note
-    CHORD = auto()         # only simultaneous groups
-    TEMPO = auto()         # only during loop repetitions
-    LEARN = auto()         # all notes (learning mode)
-    SILENT_ON_ERROR = auto()  # only after a miss
+    NOTE = auto()            # each expected note
+    CHORD = auto()           # only simultaneous groups
+    TEMPO = auto()           # only during loop repetitions
+    LEARN = auto()           # all notes (learning mode)
+    SILENT_ON_ERROR = auto() # only after a miss
+    DEMO = auto()            # play-through demonstration
+    ASSIST = auto()          # note just before it arrives
+    CORRECTION = auto()      # alias of SILENT_ON_ERROR
 
 
 @dataclass(slots=True)
@@ -63,10 +66,11 @@ class ReferenceAudioEngine:
             return
         if self.mode is ReferenceMode.TEMPO and not self._in_loop:
             return
-        if self.mode is ReferenceMode.SILENT_ON_ERROR:
+        if self.mode in (ReferenceMode.SILENT_ON_ERROR, ReferenceMode.CORRECTION):
             return  # only plays on miss via on_miss
         if self.mode is ReferenceMode.CHORD:
             return  # handled by on_chord
+        # DEMO / ASSIST / NOTE / LEARN all play approaching notes
 
         note_id = id(note) if not hasattr(note, "start_seconds") else (
             hash((note.start_seconds, note.midi_pitch, note.string, note.fret))
@@ -95,7 +99,7 @@ class ReferenceAudioEngine:
         self.sink.play(mix, self.bank.sample_rate)
 
     def on_miss(self, midi_pitch: int, duration: float = 0.3) -> None:
-        if self.mode is ReferenceMode.SILENT_ON_ERROR:
+        if self.mode in (ReferenceMode.SILENT_ON_ERROR, ReferenceMode.CORRECTION):
             self._play_midi(midi_pitch, duration)
 
     def play_demo(self, midi_pitch: int, duration: float = 0.5) -> None:

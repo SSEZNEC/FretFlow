@@ -73,7 +73,11 @@ def build_parser() -> argparse.ArgumentParser:
     sub.add_parser("ui", help="Launch the graphical interface (PySide6)")
 
     sub.add_parser("coach", help="Show skills, goals and last coaching tips")
-    prog = ear = sub.add_parser("ear-train", help="Ear training (single notes)")
+    prog = plan_p = sub.add_parser("plan", help="Generate a structured training plan")
+    plan_p.add_argument("--minutes", type=float, default=45)
+    plan_p.add_argument("--song", type=str, default="Morceau")
+    plan_p.add_argument("--focus", type=str, default=None, help="Technique focus")
+    ear = sub.add_parser("ear-train", help="Ear training (single notes)")
     ear.add_argument("--count", type=int, default=5)
     ear.add_argument("--play", action="store_true", help="Play reference tones if audio available")
     ana = sub.add_parser("analyse-song", help="Pedagogical analysis of a song file")
@@ -260,6 +264,25 @@ def _cmd_practice(args: argparse.Namespace) -> int:
 
 
 
+
+
+def _cmd_plan(args: argparse.Namespace) -> int:
+    from fretflow.coach.training_plan import TrainingPlanBuilder
+
+    plan = TrainingPlanBuilder().build(
+        total_minutes=args.minutes,
+        song_title=args.song,
+        focus_technique=args.focus,
+    )
+    print(f"── {plan.title} ──")
+    print(f"  Duree totale : {plan.total_minutes:.0f} min\n")
+    for block in plan.blocks:
+        print(f"  [{block.minutes:4.0f} min] {block.title}")
+        if block.description:
+            print(f"             {block.description}")
+        if block.exercise:
+            print(f"             → {block.exercise.instructions[:70]}")
+    return 0
 
 def _cmd_ear_train(args: argparse.Namespace) -> int:
     from fretflow.audio.reference_audio import ReferenceAudioEngine
@@ -451,6 +474,7 @@ def main(argv: list[str] | None = None) -> int:
         "history": _cmd_history,
         "ui": _cmd_ui,
         "coach": _cmd_coach,
+        "plan": _cmd_plan,
         "ear-train": _cmd_ear_train,
         "analyse-song": _cmd_analyse_song,
         "progress": _cmd_progress,

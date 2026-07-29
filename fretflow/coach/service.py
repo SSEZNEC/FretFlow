@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 
+from fretflow.coach.dialogue import build_dialogue
 from fretflow.coach.goals import GoalTracker
 from fretflow.coach.recommendation_engine import Recommendation, RecommendationEngine
 from fretflow.coach.skills import SkillProfile
@@ -109,5 +110,12 @@ class CoachService:
         lines.append("Objectifs :")
         for line in self.goals.summary_lines():
             lines.append(f"  {line}")
+
+        dialogue = build_dialogue(result.report, result.weaknesses, result.skill_profile)
+        if dialogue:
+            lines.append("")
+            lines.append("── Votre professeur ──")
+            for line in dialogue:
+                lines.append(f"  {line}")
 
         return "\n".join(lines)

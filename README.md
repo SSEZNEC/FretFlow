@@ -1,28 +1,32 @@
-# FretFlow — Professeur de guitare
+# FretFlow — Votre professeur de guitare
 
-> Écoute. Pose les doigts. Joue. Progresse.
+> Un professeur particulier installé sur votre ordinateur.
 
-## Milestone Professeur (Reference Audio + Ear Training)
+## Version 1.0 — Virtual Guitar Teacher
 
-Le logiciel enseigne **quand**, **où**, **comment** et **quel son** obtenir.
+Interface en **3 zones synchronisées** :
 
-### Nouveautés
+1. **Highway** — quand jouer  
+2. **Manche** — où et comment (doigtés)  
+3. **Teacher Panel** — conseils en temps réel  
 
-- **ReferenceAudioEngine** — prévisualisation sonore (sons de guitare synthétisés)
-- Modes : OFF / NOTE / ACCORD / TEMPO / LEARN / SILENCIEUX (sur erreur)
-- **Ear training** — `fretflow ear-train`
-- **Call & response** — phrases à reproduire
-- Banque de timbres : clean, acoustic, crunch, jazz, classical
-- Bibliothèque d'accords ouverts + diagrammes
-- Manche + doigté (M7) toujours présents
+### Capacités
+
+- Tips live : « Prépare ton barré », « Excellent timing », « Attention au slide »
+- Dialogue de fin de séance (encourageant, jamais punitif)
+- Plans d\'entraînement auto (échauffement → accords → morceau → technique → retour au calme)
+- Reference audio (NOTE / LEARN / DEMO / ASSIST / CORRECTION)
+- Feedback hauteur : ✔ / ▲ / ▼ / ≈
+- Ear training, call & response
+- Analyse pédagogique GP, progression, exports
 
 ### Installation
-
-Voir [INSTALL.md](INSTALL.md).
 
 ```bash
 pip install -e ".[dev,import,ui,audio]"
 fretflow ui
-fretflow ear-train --count 5
+fretflow plan --minutes 45 --song "Mon morceau"
 fretflow practice --auto
 ```
+
+Voir [INSTALL.md](INSTALL.md).
