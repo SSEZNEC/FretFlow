@@ -6,47 +6,51 @@
 
 ## État actuel
 
-**Milestone 2 — Session et pratique manuelle** ✅
+**Milestone 3 — Affichage de jeu et jugement** ✅
 
-- Import MIDI + Guitar Pro, bibliothèque SQLite
-- Horloge de jeu (play/pause/seek/tempo 25–200 %)
-- Jugement Perfect / Great / Good / Miss
-- Boucle A/B, section, métronome (scheduler)
-- Session runner + rapport + historique SQLite
-- CLI `practice --auto` pour démonstration sans micro
+- Highway PySide6 synchronisé au temps de jeu
+- Notes simples et longues, score / combo / précision
+- Contrôles clavier (A–K) + play/pause (Espace)
+- Tempo 50–100 %, bibliothèque graphique
+- Session runner + rapport (M2) branchés sur l'UI
 
 ## Installation
 
 ```bash
 python -m venv .venv && source .venv/bin/activate
-pip install -e ".[dev,import]"
+pip install -e ".[dev,import,ui]"
 pytest
 ```
 
-## Commandes
+## Lancer l'interface
+
+```bash
+fretflow ui
+```
+
+Dans la fenêtre :
+1. **Démo C majeur** pour un essai immédiat
+2. **Importer** un `.mid` / `.gp5` ou **Scanner** un dossier
+3. **Jouer** — les notes défilent vers la ligne de hit
+4. Touches **A S D F G H J K** = notes ; **Espace** = pause
+
+## CLI (sans UI)
 
 ```bash
 fretflow scan ~/Partitions
 fretflow library
-fretflow import morceau.mid
-fretflow practice --auto                  # démo C majeur
-fretflow practice --auto --tempo 0.7 fichier.mid
-fretflow practice --auto --start 10 --end 20 --loop fichier.mid
+fretflow practice --auto
 fretflow history
 ```
 
-## Architecture
+## Architecture UI
+
+L'UI ne calcule ni score ni DSP : elle appelle `SessionRunner` et affiche l'état.
 
 ```
-fretflow/
-├── core/        # modèles, config
-├── importers/   # GP + MIDI
-├── library/     # SQLite morceaux
-├── engine/      # horloge, jugement, session runner
-├── practice/    # boucle, métronome, settings
-├── profile/     # sessions & profil local
-├── input/       # clavier (test)
-└── app.py       # CLI
+ui/
+├── main_window.py    # bibliothèque + lancement
+├── game_window.py    # session + contrôles
+├── highway_widget.py # rendu highway (paintEvent)
+└── colors.py         # thème sombre
 ```
-
-Voir VISION.md, ARCHITECTURE.md, ROADMAP.md.

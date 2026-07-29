@@ -70,6 +70,8 @@ def build_parser() -> argparse.ArgumentParser:
 
     sub.add_parser("history", help="Show recent practice sessions")
 
+    sub.add_parser("ui", help="Launch the graphical interface (PySide6)")
+
     return parser
 
 
@@ -242,6 +244,21 @@ def _cmd_practice(args: argparse.Namespace) -> int:
     return 0
 
 
+
+def _cmd_ui(_args: argparse.Namespace) -> int:
+    try:
+        from PySide6.QtWidgets import QApplication
+    except ImportError:
+        print("PySide6 n'est pas installé. Installez avec : pip install -e \".[ui]\"")
+        return 1
+    from fretflow.ui import MainWindow
+
+    app = QApplication([])
+    app.setApplicationName("FretFlow")
+    win = MainWindow()
+    win.show()
+    return app.exec()
+
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
 
@@ -265,6 +282,7 @@ def main(argv: list[str] | None = None) -> int:
         "import": _cmd_import,
         "practice": _cmd_practice,
         "history": _cmd_history,
+        "ui": _cmd_ui,
     }
     if args.command in commands:
         return commands[args.command](args)
@@ -279,6 +297,7 @@ def main(argv: list[str] | None = None) -> int:
     print("  fretflow import <fichier>")
     print("  fretflow practice [--auto] [--tempo 0.7] [fichier]")
     print("  fretflow history")
+    print("  fretflow ui")
     return 0
 
 
