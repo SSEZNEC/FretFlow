@@ -1,0 +1,83 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "fretflow"
+version = "0.1.0"
+description = "Coach d'apprentissage de la guitare open source — joue les morceaux que tu aimes, progresse sans t'en rendre compte."
+readme = "README.md"
+requires-python = ">=3.12"
+license = "MIT"
+authors = [
+    { name = "SSEZNEC" },
+]
+keywords = ["guitar", "learning", "practice", "music", "education"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Multimedia :: Sound/Audio",
+    "Topic :: Education",
+]
+dependencies = [
+    "platformdirs>=4.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+    "ruff>=0.6",
+    "mypy>=1.11",
+]
+ui = [
+    "PySide6>=6.6",
+]
+audio = [
+    "sounddevice>=0.4.6",
+    "numpy>=1.26",
+]
+import = [
+    "PyGuitarPro>=0.9",
+    "mido>=1.3",
+]
+full = [
+    "fretflow[ui,audio,import]",
+]
+
+[project.scripts]
+fretflow = "fretflow.app:main"
+
+[project.urls]
+Homepage = "https://github.com/SSEZNEC/FretFlow"
+Repository = "https://github.com/SSEZNEC/FretFlow"
+
+[tool.hatch.build.targets.wheel]
+packages = ["fretflow"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
+ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["fretflow"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-q --tb=short"
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+packages = ["fretflow"]
