@@ -72,6 +72,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     sub.add_parser("ui", help="Launch the graphical interface (PySide6)")
 
+    sub.add_parser("coach", help="Show skills, goals and last coaching tips")
     sub.add_parser("devices", help="List audio input devices")
     diag = sub.add_parser("diagnose-audio", help="Run offline pitch detection on a synthetic tone")
     diag.add_argument("--freq", type=float, default=440.0, help="Test tone frequency Hz")
@@ -232,23 +233,39 @@ def _cmd_practice(args: argparse.Namespace) -> int:
         args.auto = True
         return _cmd_practice(args)
 
-    report = runner.build_report()
     session = runner.build_session()
     SessionRepository().save(session)
 
+    from fretflow.coach import CoachService
+    coach = CoachService()
+    result = coach.analyse_runner(runner)
     print()
-    print("── Rapport de session ──")
-    print(f"  Score     : {report.score}")
-    print(f"  Précision : {report.accuracy:.0%}")
-    print(f"  Hits/Miss : {report.notes_hit}/{report.notes_missed}")
-    print(f"  Max combo : {report.max_combo}")
-    print(f"  Offset moy: {report.average_offset_ms:+.1f} ms")
-    for rec in report.recommendations:
-        print(f"  → {rec}")
+    print(coach.format_result(result))
     return 0
 
 
 
+
+
+def _cmd_coach(_args: argparse.Namespace) -> int:
+    from fretflow.coach import CoachService, SkillProfile
+    from fretflow.profile import SkillStore
+
+    store = SkillStore()
+    profile = store.load()
+    service = CoachService(skill_store=store)
+
+    print("── Skills ──")
+    if not profile.levels:
+        print("  Aucune donnee encore. Lancez : fretflow practice --auto")
+    else:
+        for skill in sorted(profile.levels.values(), key=lambda s: s.level):
+            print(f"  {skill.label_fr:30} {skill.level:5.0%}  (n={skill.sample_count})")
+    print()
+    print("── Objectifs ──")
+    for line in service.goals.summary_lines():
+        print(f"  {line}")
+    return 0
 
 def _cmd_devices(_args: argparse.Namespace) -> int:
     from fretflow.audio import SimulatedCapture, SoundDeviceCapture
@@ -325,6 +342,7 @@ def main(argv: list[str] | None = None) -> int:
         "practice": _cmd_practice,
         "history": _cmd_history,
         "ui": _cmd_ui,
+        "coach": _cmd_coach,
         "devices": _cmd_devices,
         "diagnose-audio": _cmd_diagnose_audio,
     }

@@ -1,34 +1,29 @@
 # FretFlow
 
-**Coach d'apprentissage de la guitare open source.**
+Coach d\'apprentissage de la guitare open source.
 
-## État actuel
+## Etat actuel
 
-**Milestone 4 — Audio et calibration** ✅
+**Milestone 5 — Analyse et coach** OK
 
-- Détecteur de hauteur monophonique (autocorrélation + rejet sous-harmoniques)
-- Buffer circulaire, pipeline audio → notes validées
-- Capture simulée (tests) + sounddevice (optionnel, si PortAudio)
-- Calibration de latence, validation/debounce
-- CLI `diagnose-audio` et `devices`
-
-Milestones 0–3 inclus (import, bibliothèque, session, UI highway).
+- SessionReport riche (outcomes, sections)
+- Detection de faiblesses explicables
+- Recommandations → exercices concrets + plan
+- SkillProfile persiste (SQLite)
+- Objectifs quotidiens / hebdomadaires
+- CLI `practice` et `coach`
 
 ## Installation
 
 ```bash
-python -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev,import,ui,audio]"
-# Linux : sudo apt install portaudio19-dev   # pour le micro réel
 pytest
 ```
 
 ## Commandes
 
 ```bash
-fretflow ui
 fretflow practice --auto
-fretflow diagnose-audio --freq 440
-fretflow devices
-fretflow scan ~/Partitions
+fretflow coach
+fretflow ui
 ```
